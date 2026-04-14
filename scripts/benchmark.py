@@ -2,7 +2,7 @@
 """
 benchmark.py — Gravitino IRC Benchmark Suite
 
-Covers all factors in RBC's Polaris comparison table:
+Covers all factors in the Polaris comparison table:
 
   Tier 1 — Catalog API Read Latency    (Metadata Read Latency, Catalog Listing, Caching)
   Tier 2 — Catalog API Write Latency   (Metadata Write Latency, Table Commits)
