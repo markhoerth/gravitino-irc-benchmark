@@ -144,14 +144,25 @@ def run_tier2():
     if resp.status_code not in (200, 201, 409):
         print(f"  WARNING: Could not create scratch namespace, HTTP {resp.status_code}: {resp.text}")
 
-    # Also ensure Trino can see the schema
+    # Ensure Trino schema exists with S3 location
+    # Trino requires an explicit location on the schema to write Iceberg tables.
+    S3_BUCKET = os.environ.get("S3_BUCKET", "mhoerth-gravitino-benchmark")
+    schema_location = f"s3://{S3_BUCKET}/{BENCH_NS}/"
     try:
         _conn = trino_conn()
         _cur = _conn.cursor()
-        _cur.execute(f"CREATE SCHEMA IF NOT EXISTS gravitino_irc.{BENCH_NS}")
+        # Drop and recreate to ensure location is set correctly
+        try:
+            _cur.execute(f"DROP SCHEMA IF EXISTS gravitino_irc.{BENCH_NS}")
+            _cur.fetchall()
+        except: pass
+        _cur.execute(
+            f"CREATE SCHEMA IF NOT EXISTS gravitino_irc.{BENCH_NS} "
+            f"WITH (location = '{schema_location}')"
+        )
         _cur.fetchall()
         _conn.close()
-        print(f"  ✓ Scratch schema ready: {BENCH_NS}")
+        print(f"  ✓ Scratch schema ready: {BENCH_NS} -> {schema_location}")
     except Exception as e:
         print(f"  WARNING: Trino schema setup: {e}")
 
