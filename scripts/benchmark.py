@@ -2,7 +2,7 @@
 """
 benchmark.py — Gravitino IRC Benchmark Suite
 
-Covers all factors in the Polaris comparison table:
+Covers all factors in RBC's Polaris comparison table:
 
   Tier 1 — Catalog API Read Latency    (Metadata Read Latency, Catalog Listing, Caching)
   Tier 2 — Catalog API Write Latency   (Metadata Write Latency, Table Commits)
@@ -219,15 +219,8 @@ def run_tier2():
     except Exception as e:
         print(f"    WARNING: INSERT commit test failed: {e}")
 
-    # Cleanup scratch namespace
-    try:
-        cur_conn2 = trino_conn()
-        cur2 = cur_conn2.cursor()
-        cur2.execute(f"DROP TABLE IF EXISTS gravitino_irc.{BENCH_NS}.{COMMIT_TABLE}")
-        cur2.fetchall()
-        cur_conn2.close()
-        requests.delete(f"{base}/v1/namespaces/{BENCH_NS}", timeout=10)
-    except: pass
+    # Note: benchmark_scratch namespace is intentionally left in place
+    # to avoid any risk of accidentally dropping production namespaces.
 
     return results
 
