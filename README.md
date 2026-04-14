@@ -29,14 +29,14 @@ Each operation is run multiple times; results report min, median, P95, and max.
 | MySQL (catalog backend) | 8.0 |
 | Trino | 469 |
 | Object store | AWS S3 (us-east-2) |
-| Dataset | NYC Taxi yellow trips 2024 (12 months, ~650MB Parquet) |
+| Dataset | NYC Taxi yellow trips 2024 (12 months, ~650MB, ~41M rows) |
 
 ## Prerequisites
 
 - EC2 instance in `us-east-2` (recommended: `m5.2xlarge`)
-- IAM instance role with S3 read/write on your benchmark bucket
 - Docker + Docker Compose installed
-- AWS CLI installed (for initial data upload)
+- AWS credentials with S3 read/write on your benchmark bucket
+- AWS CLI installed
 
 ## Setup
 
@@ -46,15 +46,20 @@ Each operation is run multiple times; results report min, median, P95, and max.
 git clone https://github.com/markhoerth/gravitino-irc-benchmark.git
 cd gravitino-irc-benchmark
 cp .env.example .env
-# Edit .env — set S3_BUCKET and S3_PREFIX at minimum
+# Edit .env — set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and S3_BUCKET
 ```
 
-### 2. Upload NYC Taxi data to S3
+### 2. Upload NYC Taxi 2024 data to S3
 
-From your laptop (or any machine with the Parquet files):
+Download Yellow Taxi Trip Records for all 12 months of 2024 from:
+https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page
+
+We use 2024 specifically because it has a consistent schema across all 12 months.
+The loader expects files named `yellow_tripdata_2024-01.parquet` through
+`yellow_tripdata_2024-12.parquet`.
 
 ```bash
-aws s3 sync ~/data/nyc_taxi_2024/ s3://YOUR_BUCKET/YOUR_PREFIX/raw/nyc_taxi/
+aws s3 sync ~/data/nyc_taxi_2024/ s3://YOUR_BUCKET/raw/nyc_taxi/
 ```
 
 ### 3. Start services
@@ -63,14 +68,14 @@ aws s3 sync ~/data/nyc_taxi_2024/ s3://YOUR_BUCKET/YOUR_PREFIX/raw/nyc_taxi/
 make up
 ```
 
-### 4. Register data as Iceberg table
+### 4. Load data
 
 ```bash
 make load-data
 ```
 
-This uses PyIceberg `add_files()` to register the existing Parquet files as an
-Iceberg table via Gravitino IRC — no data rewrite, just metadata registration.
+Reads each Parquet file from S3 and writes it into a proper Iceberg table
+via Gravitino IRC (~41M rows, takes about 40 seconds on m5.2xlarge).
 
 ### 5. Run benchmark
 
