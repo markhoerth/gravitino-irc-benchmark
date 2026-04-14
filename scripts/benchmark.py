@@ -126,6 +126,9 @@ def run_tier1():
 # ── Tier 2: Catalog API Write Latency ────────────────────────────────────────
 # Covers: Metadata Write Latency, Table Commits
 
+# ── Tier 2: Catalog API Write Latency ────────────────────────────────────────
+# Covers: Metadata Write Latency, Table Commits
+
 def run_tier2():
     print(f"\n{'='*60}")
     print(f"  TIER 2 — Catalog API Write Latency  ({WRITE_RUNS} runs each)")
@@ -135,9 +138,22 @@ def run_tier2():
     base = IRC_URI
     results = []
 
-    # Ensure scratch namespace exists
-    requests.post(f"{base}/v1/namespaces",
-                  json={"namespace": [BENCH_NS]}, timeout=10)
+    # Ensure scratch namespace exists via IRC REST
+    resp = requests.post(f"{base}/v1/namespaces",
+                         json={"namespace": [BENCH_NS]}, timeout=10)
+    if resp.status_code not in (200, 201, 409):
+        print(f"  WARNING: Could not create scratch namespace, HTTP {resp.status_code}: {resp.text}")
+
+    # Also ensure Trino can see the schema
+    try:
+        _conn = trino_conn()
+        _cur = _conn.cursor()
+        _cur.execute(f"CREATE SCHEMA IF NOT EXISTS gravitino_irc.{BENCH_NS}")
+        _cur.fetchall()
+        _conn.close()
+        print(f"  ✓ Scratch schema ready: {BENCH_NS}")
+    except Exception as e:
+        print(f"  WARNING: Trino schema setup: {e}")
 
     # 1. CREATE namespace
     print(f"\n[W] createNamespace ...")
@@ -147,7 +163,6 @@ def run_tier2():
         status, ms, _ = timed_rest("POST", f"{base}/v1/namespaces",
                                    json={"namespace": [ns]})
         timings.append(ms)
-        # cleanup
         requests.delete(f"{base}/v1/namespaces/{ns}", timeout=10)
     r = stats(timings, "createNamespace")
     results.append(r); print_result(r)
@@ -162,7 +177,6 @@ def run_tier2():
         ]
     }
     timings = []
-    created = []
     for i in range(WRITE_RUNS):
         tname = f"bench_tbl_{i}_{uuid.uuid4().hex[:6]}"
         status, ms, _ = timed_rest(
@@ -171,57 +185,35 @@ def run_tier2():
             json={"name": tname, "schema": table_schema}
         )
         timings.append(ms)
-        if status in (200, 201):
-            created.append(tname)
     r = stats(timings, "createTable")
     results.append(r); print_result(r)
 
-    # 3. DROP table
-    print(f"\n[W] dropTable ...")
-    timings = []
-    for tname in created:
-        status, ms, _ = timed_rest(
-            "DELETE",
-            f"{base}/v1/namespaces/{BENCH_NS}/tables/{tname}"
+    # 3. Trino INSERT commit — times a single-row Iceberg commit via Trino
+    print(f"\n[W] Trino INSERT commit ({WRITE_RUNS} runs) ...")
+    try:
+        setup_conn = trino_conn()
+        setup_cur = setup_conn.cursor()
+        setup_cur.execute(
+            f"CREATE TABLE IF NOT EXISTS gravitino_irc.{BENCH_NS}.{COMMIT_TABLE} "
+            f"(id BIGINT, value VARCHAR) WITH (format = 'PARQUET')"
         )
-        timings.append(ms)
-    if timings:
-        r = stats(timings, "dropTable")
-        results.append(r); print_result(r)
-
-    # 4. Table commit via Trino INSERT
-    print(f"\n[W] Trino INSERT commit (10 rows) ...")
-    # Create a small table for commit testing
-    cur_conn = trino_conn()
-    cur = cur_conn.cursor()
-    try:
-        cur.execute(f"DROP TABLE IF EXISTS gravitino_irc.{BENCH_NS}.{COMMIT_TABLE}")
-        cur.fetchall()
-    except: pass
-    try:
-        cur.execute(f"""
-            CREATE TABLE gravitino_irc.{BENCH_NS}.{COMMIT_TABLE} (
-                id BIGINT, value VARCHAR
-            ) WITH (format = 'PARQUET')
-        """)
-        cur.fetchall()
-        cur_conn.close()
+        setup_cur.fetchall()
+        setup_conn.close()
+        print(f"  ✓ Commit test table ready")
 
         timings = []
         for i in range(WRITE_RUNS):
-            ms, _ = trino_exec(f"""
-                INSERT INTO gravitino_irc.{BENCH_NS}.{COMMIT_TABLE}
-                VALUES ({i}, 'benchmark_row_{i}')
-            """)
+            ms, _ = trino_exec(
+                f"INSERT INTO gravitino_irc.{BENCH_NS}.{COMMIT_TABLE} "
+                f"VALUES ({i}, 'benchmark_row_{i}')"
+            )
             timings.append(ms)
         r = stats(timings, "Trino INSERT commit")
         results.append(r); print_result(r)
     except Exception as e:
-        print(f"    WARNING: INSERT commit test failed: {e}")
+        print(f"  ERROR: INSERT commit test failed: {e}")
 
-    # Note: benchmark_scratch namespace is intentionally left in place
-    # to avoid any risk of accidentally dropping production namespaces.
-
+    # Note: benchmark_scratch namespace left in place intentionally.
     return results
 
 
