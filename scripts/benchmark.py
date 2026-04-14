@@ -254,7 +254,7 @@ def print_report(tier1: list[dict], tier2: list[dict]):
         "tier1_catalog_api": tier1,
         "tier2_trino_queries": tier2,
     }
-    with open("/scripts/benchmark_results.json", "w") as f:
+    with open("/tmp/benchmark_results.json", "w") as f:
         json.dump(output, f, indent=2)
 
     print(f"\n  Results saved to benchmark_results.json")
