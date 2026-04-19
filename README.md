@@ -25,11 +25,24 @@ Each operation is run multiple times; results report min, median, P95, and max.
 
 | Component | Version |
 |-----------|---------|
-| Gravitino IRC | 1.2.0 |
-| MySQL (catalog backend) | 8.0 |
+| Gravitino IRC | 1.2.0 (+ hotfix) |
+| PostgreSQL (catalog backend) | 15 |
 | Trino | 469 |
 | Object store | AWS S3 (us-east-2) |
 | Dataset | NYC Taxi yellow trips 2024 (12 months, ~650MB, ~41M rows) |
+
+## Bundled hotfix JAR
+
+This repo bundles a single patched `gravitino-iceberg-rest-server-1.2.0.jar`
+at `dockerfiles/`. It is the official Apache Gravitino engineering build
+from the [`1.2.0-hotfix-release`][tag] tag — stock `v1.2.0` with exactly
+one commit applied: the fix for [PR #10767][pr10767], which addresses a
+`CREATE TABLE` failure under Trino when authorization is enabled. See
+[`PATCHED_JAR.md`](./PATCHED_JAR.md) for the full provenance, SHA-1, and
+verification steps. The JAR will be superseded by the next 1.2.x release.
+
+[tag]: https://github.com/apache/gravitino/releases/tag/1.2.0-hotfix-release
+[pr10767]: https://github.com/apache/gravitino/pull/10767
 
 ## Prerequisites
 
@@ -88,6 +101,7 @@ Results are printed to console and saved to `benchmark_results.json`.
 ## Other commands
 
 ```bash
+make smoke-test     # Trino → IRC end-to-end sanity check (verifies hotfix)
 make trino-shell    # interactive Trino SQL shell
 make logs-irc       # tail Gravitino IRC logs
 make status         # show service health

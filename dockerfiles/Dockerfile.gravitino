@@ -1,0 +1,36 @@
+###############################################################################
+# Gravitino 1.2.0 Full Server + PostgreSQL JDBC driver + AWS bundle
+#
+# Full Gravitino server with IRC as auxiliary service using dynamic-config-provider.
+###############################################################################
+
+FROM apache/gravitino:1.2.0
+
+# PostgreSQL JDBC driver — for entity store and IRC JDBC backend
+ADD https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.3/postgresql-42.7.3.jar \
+    /root/gravitino/libs/postgresql-42.7.3.jar
+ADD https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.3/postgresql-42.7.3.jar \
+    /root/gravitino/iceberg-rest-server/libs/postgresql-42.7.3.jar
+RUN chmod 644 /root/gravitino/libs/postgresql-42.7.3.jar && \
+    chmod 644 /root/gravitino/iceberg-rest-server/libs/postgresql-42.7.3.jar
+
+# Iceberg AWS bundle — S3FileIO + AWS SDK (must match iceberg-core version)
+ADD https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-aws-bundle/1.10.1/iceberg-aws-bundle-1.10.1.jar \
+    /root/gravitino/iceberg-rest-server/libs/iceberg-aws-bundle-1.10.1.jar
+RUN chmod 644 /root/gravitino/iceberg-rest-server/libs/iceberg-aws-bundle-1.10.1.jar
+
+# Official hotfix JAR from Apache Gravitino engineering.
+# Source: tag 1.2.0-hotfix-release (v1.2.0 + PR #10767 via #10802)
+# URL:    https://github.com/apache/gravitino/releases/tag/1.2.0-hotfix-release
+# SHA-1:  876ee5bf1099acdcb7d8e4f6ccc6d6b603d53a0e
+# Fixes:  CREATE TABLE via Trino fails with NoSuchTableException when
+#         authorization is enabled (GitHub issue #10766 / PR #10767).
+# This JAR will be superseded by the official 1.2.1 point release.
+# See PATCHED_JAR.md at repo root for full provenance.
+COPY dockerfiles/gravitino-iceberg-rest-server-1.2.0.jar \
+    /root/gravitino/iceberg-rest-server/libs/gravitino-iceberg-rest-server-1.2.0.jar
+
+COPY dockerfiles/gravitino-start.sh /gravitino-start.sh
+RUN chmod +x /gravitino-start.sh
+
+ENTRYPOINT ["/gravitino-start.sh"]

@@ -2,5 +2,3 @@
 benchmark_results.json
 __pycache__/
 *.pyc
-conf/gravitino-irc/gravitino-iceberg-rest-server.conf
-conf/gravitino-irc/gravitino-iceberg-rest-server.conf
