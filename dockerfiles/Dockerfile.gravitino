@@ -19,6 +19,14 @@ ADD https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-aws-bundle/1.10.1/
     /root/gravitino/iceberg-rest-server/libs/iceberg-aws-bundle-1.10.1.jar
 RUN chmod 644 /root/gravitino/iceberg-rest-server/libs/iceberg-aws-bundle-1.10.1.jar
 
+# Iceberg AWS bundle also needs to be on the lakehouse-iceberg catalog plugin's
+# classpath — dynamic-config-provider delegates server-side FileIO init to the
+# Gravitino catalog framework, which loads from catalogs/lakehouse-iceberg/libs/.
+ADD https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-aws-bundle/1.10.1/iceberg-aws-bundle-1.10.1.jar \
+    /root/gravitino/catalogs/lakehouse-iceberg/libs/iceberg-aws-bundle-1.10.1.jar
+RUN chmod 644 /root/gravitino/catalogs/lakehouse-iceberg/libs/iceberg-aws-bundle-1.10.1.jar
+
+
 # Official hotfix JAR from Apache Gravitino engineering.
 # Source: tag 1.2.0-hotfix-release (v1.2.0 + PR #10767 via #10802)
 # URL:    https://github.com/apache/gravitino/releases/tag/1.2.0-hotfix-release
@@ -34,3 +42,7 @@ COPY dockerfiles/gravitino-start.sh /gravitino-start.sh
 RUN chmod +x /gravitino-start.sh
 
 ENTRYPOINT ["/gravitino-start.sh"]
+
+
+
+

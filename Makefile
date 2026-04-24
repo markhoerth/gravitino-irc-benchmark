@@ -1,4 +1,4 @@
-.PHONY: up down down-clean build load-data benchmark smoke-test trino-shell logs status
+.PHONY: up down down-clean build load-data benchmark smoke-test trino-shell spark-sql logs status
 
 # ── Environment ───────────────────────────────────────────────────────────────
 # Copy .env.example to .env and fill in S3_BUCKET and AWS credentials.
@@ -16,6 +16,7 @@ up:
 	@echo ""
 	@echo "Next steps:"
 	@echo "  make trino-shell  — connect to Trino CLI"
+	@echo "  make spark-sql    — connect to Spark SQL CLI"
 	@echo "  make load-data    — upload data to S3 and register as Iceberg table"
 	@echo "  make benchmark    — run benchmark suite"
 
@@ -52,6 +53,12 @@ trino-shell:
 	docker compose exec trino trino \
 		--server http://localhost:8080 \
 		--catalog irc_catalog
+
+.PHONY: up down down-clean build load-data benchmark smoke-test trino-shell spark-sql spark-shell pyspark logs status
+
+# ── Spark shells ──────────────────────────────────────────────────────────────
+spark-sql:
+	docker compose exec spark /opt/spark/bin/spark-sql
 
 # ── Logs ──────────────────────────────────────────────────────────────────────
 logs:

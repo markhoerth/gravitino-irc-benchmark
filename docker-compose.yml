@@ -163,7 +163,30 @@ services:
     working_dir: /scripts
     command: >
       /bin/sh -c "
-        pip install --quiet pyiceberg==0.8.0 pyarrow boto3 trino requests tabulate &&
+        pip install --quiet pyiceberg==0.9.1 pyarrow boto3 trino requests tabulate &&
         tail -f /dev/null
       "
     restart: unless-stopped
+
+  # ── Spark ──────────────────────────────────────────────────────────────────
+  # Spark 3.5.5 client pointed at the Gravitino IRC endpoint. Primary use is
+  # exercising flows PyIceberg can't drive (MOR deletes, MERGE INTO).
+  # Shell: make spark-sql
+  spark:
+    build:
+      context: .
+      dockerfile: dockerfiles/Dockerfile.spark
+    container_name: spark
+    networks: [bench-net]
+    depends_on:
+      gravitino:
+        condition: service_healthy
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_REGION: ${AWS_REGION}
+    volumes:
+      - ./conf/spark/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro
+    command: tail -f /dev/null
+    restart: unless-stopped
+

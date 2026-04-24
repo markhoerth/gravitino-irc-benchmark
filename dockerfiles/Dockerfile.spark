@@ -1,0 +1,25 @@
+###############################################################################
+# Spark 3.5.5 + Iceberg 1.10.1 runtime + AWS bundle
+#
+# Client for exercising the Gravitino IRC endpoint with a real query engine,
+# in particular for workloads PyIceberg can't drive (MOR deletes, MERGE INTO,
+# CTAS). Iceberg version matches the Gravitino server (1.10.1) so the
+# iceberg-spark-runtime and iceberg-aws-bundle stay consistent end-to-end.
+###############################################################################
+
+FROM apache/spark:3.5.5
+
+USER root
+
+# Iceberg Spark runtime — must match iceberg-aws-bundle version
+ADD https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-spark-runtime-3.5_2.12/1.10.1/iceberg-spark-runtime-3.5_2.12-1.10.1.jar \
+    /opt/spark/jars/iceberg-spark-runtime-3.5_2.12-1.10.1.jar
+RUN chmod 644 /opt/spark/jars/iceberg-spark-runtime-3.5_2.12-1.10.1.jar
+
+# Iceberg AWS bundle — S3FileIO + AWS SDK (must match iceberg-spark-runtime)
+ADD https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-aws-bundle/1.10.1/iceberg-aws-bundle-1.10.1.jar \
+    /opt/spark/jars/iceberg-aws-bundle-1.10.1.jar
+RUN chmod 644 /opt/spark/jars/iceberg-aws-bundle-1.10.1.jar
+
+USER spark
+WORKDIR /opt/spark/work-dir
